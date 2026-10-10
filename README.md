@@ -86,7 +86,15 @@ dimmed. The keys also work without opening the menu.
 | toolbar | `a` looks good · `c` comment · `d` delete · `Esc` |
 | notes | `j`/`k`; `e` edit; `x` remove; click a bubble |
 | file/folder review | `E` send new · `m` review menu (`R` resend all · `F` finish review · `U` undo · `H` archive) |
+| folder review | `Ctrl+P` find Markdown files by name, including collapsed folders |
 | tree | `j`/`k`; `Enter` open; `.` show/hide dot-prefixed entries (`.agents/`, `.github/`); `E` sends new notes across all reviewed files, including collapsed folders |
+
+`Ctrl+P` opens Quick Open in folder reviews. Type a filename (case-insensitive,
+ordered characters: `prd` matches `product-requirements.md`), use arrow keys to select,
+and Enter to open. Results show paths relative to the folder, so duplicate names are
+unambiguous. Escape cancels without changing the document. Discovery runs in the
+background and follows the tree's current hidden-file setting; reopening rescans for
+new or removed files. This searches filenames, not contents or spelling corrections.
 
 Hidden folders are out of the tree until `.` asks for them, and `.git`, `.hg`, `.svn`,
 `.jj`, `.cache`, `.direnv`, `.venv`, `venv`, `__pycache__`, `node_modules`, `vendor`,

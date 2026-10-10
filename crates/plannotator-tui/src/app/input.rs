@@ -20,6 +20,10 @@ impl App {
                 Mode::Browse => self.browse_key(*key),
                 Mode::ConfirmQuit => self.confirm_quit_key(*key),
                 Mode::Pick => self.pick_key(*key),
+                Mode::FileSearch => {
+                    self.file_search_key(*key);
+                    Ok(())
+                }
                 Mode::Archive => {
                     self.archive_key(*key);
                     Ok(())
@@ -31,6 +35,10 @@ impl App {
             // it is ignored rather than replayed as keystrokes.
             Event::Paste(text) if matches!(self.mode, Mode::Compose | Mode::Edit(_)) => {
                 self.compose.insert_text(text);
+                Ok(())
+            }
+            Event::Paste(text) if self.mode == Mode::FileSearch => {
+                self.file_search_paste(text);
                 Ok(())
             }
             Event::Mouse(mouse) if self.mode == Mode::Browse => self.mouse(*mouse),
@@ -47,6 +55,7 @@ impl App {
     fn browse_key(&mut self, key: KeyEvent) -> Result<()> {
         // Global keys first.
         match (key.code, key.modifiers) {
+            (KeyCode::Char('p'), KeyModifiers::CONTROL) => return self.start_file_search(),
             (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.request_quit();
                 return Ok(());
@@ -346,6 +355,7 @@ impl App {
                     | Mode::Browse
                     | Mode::ConfirmQuit
                     | Mode::Pick
+                    | Mode::FileSearch
                     | Mode::Archive
                     | Mode::ReviewMenu => {
                         if !body.is_empty()

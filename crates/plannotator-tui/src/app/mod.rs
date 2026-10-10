@@ -5,6 +5,7 @@ mod archive_view;
 mod compose;
 mod draw;
 mod feedback;
+mod file_search;
 mod header;
 mod input;
 mod menu;
@@ -48,6 +49,7 @@ const TOOLBAR: [(&str, &str, char, Kind); 3] = [
 #[derive(Debug, PartialEq, Eq)]
 enum Mode {
     Browse,
+    FileSearch,
     /// Typing a comment for the pending selection.
     Compose,
     /// Editing the body of an existing annotation (by id).
@@ -133,6 +135,7 @@ pub(crate) struct App {
     project: String,
     /// Present in folder mode.
     tree: Option<Tree>,
+    file_search: Option<file_search::FileSearch>,
     tree_cursor: usize,
     /// First tree row drawn; follows `tree_cursor` so the selected row stays visible.
     tree_scroll: usize,
@@ -219,6 +222,7 @@ impl App {
             data_dir,
             project,
             tree: None,
+            file_search: None,
             tree_cursor: 0,
             tree_scroll: 0,
             tree_visible: None,
@@ -357,12 +361,17 @@ impl App {
             return Ok(());
         }
         let path = row.path.clone();
-        if matches!(&self.open.source.provenance, Provenance::File { path: p } if *p == path) {
+        self.open_file_path(&path)
+    }
+
+    /// Shared by tree navigation and Quick Open; build before replacing the document.
+    fn open_file_path(&mut self, path: &Path) -> Result<()> {
+        if matches!(&self.open.source.provenance, Provenance::File { path: p } if p == path) {
             self.focus = Focus::Document;
             return Ok(());
         }
         let width = self.open.layout.width;
-        self.open = Open::new(read_file(&path)?, width, &self.data_dir, &self.project)?;
+        self.open = Open::new(read_file(path)?, width, &self.data_dir, &self.project)?;
         self.update_open_review_counts();
         self.derive_send_state();
         self.scroll = 0;
