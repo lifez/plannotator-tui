@@ -86,21 +86,19 @@ dimmed. The keys also work without opening the menu.
 | toolbar | `a` looks good · `c` comment · `d` delete · `Esc` |
 | notes | `j`/`k`; `e` edit; `x` remove; click a bubble |
 | file/folder review | `E` send new · `m` review menu (`R` resend all · `F` finish review · `U` undo · `H` archive) |
-| folder review | `Ctrl+P` find Markdown files by name, including collapsed folders |
+| folder review | `Ctrl+P` open a file by name, including in collapsed folders: type, `↑`/`↓` or click, `Enter`, `Esc` |
 | tree | `j`/`k`; `Enter` open; `.` show/hide dot-prefixed entries (`.agents/`, `.github/`); `E` sends new notes across all reviewed files, including collapsed folders |
-
-`Ctrl+P` opens Quick Open in folder reviews. Type a filename (case-insensitive,
-ordered characters: `prd` matches `product-requirements.md`), use arrow keys to select,
-and Enter to open. Results show paths relative to the folder, so duplicate names are
-unambiguous. Escape cancels without changing the document. Discovery runs in the
-background and follows the tree's current hidden-file setting; reopening rescans for
-new or removed files. This searches filenames, not contents or spelling corrections.
 
 Hidden folders are out of the tree until `.` asks for them, and `.git`, `.hg`, `.svn`,
 `.jj`, `.cache`, `.direnv`, `.venv`, `venv`, `__pycache__`, `node_modules`, `vendor`,
 `target`, `build`, `dist` and `out` stay out either way — none of them is read at all.
 Showing or hiding is a view choice: notes recorded for a file inside a hidden folder are
 part of the review and are sent whether or not its folder is listed.
+
+`Ctrl+P` matches file names, not contents, ignoring case and allowing gaps (`prd` finds
+`product-requirements.md`). Results show the path within the folder, so files with the same
+name are told apart, and opening one expands the tree down to it. It follows the tree's
+hidden-entries setting and skips the same folders the tree does.
 
 ## Inside Herdr
 
