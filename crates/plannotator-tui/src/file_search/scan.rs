@@ -1,4 +1,7 @@
-//! A cancellable directory walk. A bounded channel limits unread result batches.
+//! The Quick Open scan: a cancellable walk of the whole folder on its own thread, with the
+//! tree's rules (`tree::is_walkable_dir`): dependency/build directories and symlinked
+//! directories are never entered, so a symlink loop cannot trap it. A bounded channel
+//! limits how many unread batches pile up.
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -21,7 +24,7 @@ pub(crate) struct Scan {
 
 impl Scan {
     pub(crate) fn start(root: PathBuf, show_hidden: bool) -> Result<Self> {
-        let (sender, updates) = sync_channel(4);
+        let (sender, updates) = sync_channel(64);
         let cancelled = Arc::new(AtomicBool::new(false));
         let stop = cancelled.clone();
         std::thread::Builder::new()

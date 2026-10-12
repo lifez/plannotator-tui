@@ -420,8 +420,9 @@ impl App {
             Focus::Document if self.roam => format!("hjkl move · v select · c comment · esc blocks · {quit}"),
             Focus::Document => format!("i move · v select · c comment · E send · tab · {quit}"),
         };
-        if self.tree.is_some() {
-            help.insert_str(0, "ctrl+p files · ");
+        // Quick Open works from any pane of a folder review, so every pane's help names it.
+        if self.tree.is_some() && self.pending.is_none() {
+            help.insert_str(0, "ctrl+p find · ");
         }
         // The status must stay readable at any width, so the key help yields columns to it
         // (and is clipped) rather than the other way round.

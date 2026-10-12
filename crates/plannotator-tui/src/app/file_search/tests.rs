@@ -93,12 +93,17 @@ fn duplicate_names_open_the_selected_path_reveal_ancestors_and_keep_annotations(
     let (root, mut app) = fixture();
     start(&mut app);
     finish_scan(&mut app);
-    assert!(screen(&mut app, 100, 24).contains("docs/deep/plan.md"));
+    // Shown with the platform's separator.
+    let nested = std::path::Path::new("docs").join("deep").join("plan.md");
+    assert!(screen(&mut app, 100, 24).contains(nested.to_string_lossy().as_ref()));
     key(&mut app, KeyCode::Enter);
     assert!(
         matches!(&app.open.source.provenance, Provenance::File { path } if path == &root.join("docs/deep/plan.md"))
     );
-    assert!(app.tree.as_ref().and_then(|t| t.position(&root.join("docs/deep/plan.md"))).is_some());
+    assert_eq!(
+        app.tree.as_ref().and_then(|t| t.position(&root.join("docs/deep/plan.md"))),
+        Some(app.tree_cursor)
+    );
     app.add_block_annotation(0, Kind::Comment, "keep me".into()).expect("annotate");
     start(&mut app);
     finish_scan(&mut app);
@@ -147,41 +152,14 @@ fn the_selected_result_stays_visible_when_scrolling() {
 }
 
 #[test]
-fn a_failed_scan_is_reported_as_incomplete_not_as_no_files() {
+fn a_failed_scan_is_reported_as_unreadable_not_as_no_files() {
     let (root, mut app) = fixture();
     std::fs::remove_dir_all(&root).expect("remove root");
     start(&mut app);
     finish_scan(&mut app);
     assert_eq!(app.file_search.as_ref().map(|s| s.errors), Some(1));
-    assert!(screen(&mut app, 100, 24).contains("incomplete"));
+    assert!(screen(&mut app, 100, 24).contains("1 unreadable"));
     key(&mut app, KeyCode::Esc);
-}
-
-#[test]
-#[ignore = "manual filesystem and matching benchmark; creates 10,000 Markdown files"]
-#[allow(clippy::print_stderr, reason = "manual benchmark reports measurements")]
-fn search_timing_on_ten_thousand_files() {
-    let (root, mut app) = fixture();
-    for index in 0..10_000 {
-        std::fs::write(root.join(format!("product-requirements-{index:05}.md")), "# Plan").expect("write");
-    }
-    let started = Instant::now();
-    start(&mut app);
-    while app.file_search.as_ref().is_some_and(|s| s.files.is_empty()) {
-        app.poll_file_search();
-        assert!(started.elapsed() < Duration::from_secs(5));
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    let first = started.elapsed();
-    finish_scan(&mut app);
-    let scan = started.elapsed();
-    let query_started = Instant::now();
-    app.handle_event(&Event::Paste("prd".into())).expect("query");
-    let query = query_started.elapsed();
-    assert_eq!(app.file_search.as_ref().map(|s| s.results.len()), Some(10_000));
-    eprintln!("10k files: first result {first:?}, complete {scan:?}, query {query:?}");
-    key(&mut app, KeyCode::Esc);
-    std::fs::remove_dir_all(root).expect("cleanup");
 }
 
 #[test]
@@ -191,7 +169,7 @@ fn paste_unicode_empty_results_and_tiny_resizes_are_safe() {
     finish_scan(&mut app);
     app.handle_event(&Event::Paste("แผน\nงาน".into())).expect("paste");
     assert_eq!(app.file_search.as_ref().map(|s| s.query.as_str()), Some("แผนงาน"));
-    assert!(screen(&mut app, 100, 24).contains("No matching files"));
+    assert!(screen(&mut app, 100, 24).contains("no matching files"));
     for size in [(1, 1), (10, 4), (80, 20)] {
         screen(&mut app, size.0, size.1);
     }
@@ -201,4 +179,72 @@ fn paste_unicode_empty_results_and_tiny_resizes_are_safe() {
     assert_eq!(app.open.source.name, "original");
     key(&mut app, KeyCode::Esc);
     std::fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn the_cursor_stays_on_the_best_match_while_results_stream_in_until_the_user_moves_it() {
+    let (root, mut app) = fixture();
+    start(&mut app);
+    finish_scan(&mut app);
+    let search = app.file_search.as_mut().expect("search");
+    // Replay the scan as two batches: the root's file first, then the nested one, which
+    // sorts above it.
+    let mut files = std::mem::take(&mut search.files);
+    files.sort_by(|a, b| b.relative.cmp(&a.relative));
+    let nested = files.pop().expect("nested");
+    search.files = files;
+    search.rematch();
+    search.files.push(nested);
+    search.rematch();
+    assert_eq!(search.selected_path(), Some(root.join("docs/deep/plan.md")));
+    // Once the user has picked a row, a later batch must not move it.
+    search.move_cursor(1);
+    search.rematch();
+    assert_eq!(search.selected_path(), Some(root.join("plan.md")));
+    key(&mut app, KeyCode::Esc);
+    std::fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn clicking_a_result_opens_it_and_ctrl_c_closes_without_quitting() {
+    let (root, mut app) = fixture();
+    start(&mut app);
+    finish_scan(&mut app);
+    screen(&mut app, 100, 24);
+    let (rect, _) = *app.geometry.search_rows.get(1).expect("second row");
+    let click = ratatui::crossterm::event::MouseEvent {
+        kind: ratatui::crossterm::event::MouseEventKind::Down(ratatui::crossterm::event::MouseButton::Left),
+        column: rect.x + 1,
+        row: rect.y,
+        modifiers: KeyModifiers::NONE,
+    };
+    app.handle_event(&Event::Mouse(click)).expect("click");
+    assert_eq!(app.mode, Mode::Browse);
+    assert!(
+        matches!(&app.open.source.provenance, Provenance::File { path } if path == &root.join("plan.md"))
+    );
+    start(&mut app);
+    app.handle_event(&Event::Key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL))).expect("ctrl+c");
+    assert_eq!(app.mode, Mode::Browse);
+    assert!(!app.quit);
+    assert!(app.file_search.is_none());
+    std::fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn ctrl_p_does_nothing_outside_a_folder_review() {
+    let (root, mut app) = fixture();
+    app.tree = None;
+    app.handle_event(&Event::Key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL))).expect("ctrl+p");
+    assert_eq!(app.mode, Mode::Browse);
+    assert!(app.file_search.is_none());
+    std::fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn a_long_path_keeps_its_file_name_visible() {
+    assert_eq!(super::tail("docs/deep/plan.md", 40), "docs/deep/plan.md");
+    assert_eq!(super::tail("docs/deep/plan.md", 10), "…p/plan.md");
+    // Wide characters count two columns.
+    assert_eq!(super::tail("文档/计划.md", 8), "…计划.md");
 }

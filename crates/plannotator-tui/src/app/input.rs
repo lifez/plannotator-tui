@@ -37,12 +37,17 @@ impl App {
                 self.compose.insert_text(text);
                 Ok(())
             }
+            // In Quick Open a paste joins the query, newlines dropped.
             Event::Paste(text) if self.mode == Mode::FileSearch => {
                 self.file_search_paste(text);
                 Ok(())
             }
             Event::Mouse(mouse) if self.mode == Mode::Browse => self.mouse(*mouse),
             Event::Mouse(mouse) if self.mode == Mode::Pick => self.pick_mouse(*mouse),
+            Event::Mouse(mouse) if self.mode == Mode::FileSearch => {
+                self.file_search_mouse(*mouse);
+                Ok(())
+            }
             Event::Mouse(mouse) if self.mode == Mode::ReviewMenu => self.menu_mouse(*mouse),
             Event::Mouse(mouse) if self.mode == Mode::Archive => {
                 self.archive_mouse(*mouse);
@@ -55,7 +60,10 @@ impl App {
     fn browse_key(&mut self, key: KeyEvent) -> Result<()> {
         // Global keys first.
         match (key.code, key.modifiers) {
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) => return self.start_file_search(),
+            // Quick Open exists only in a folder review; elsewhere ctrl+p falls through to `p`.
+            (KeyCode::Char('p'), KeyModifiers::CONTROL) if self.tree.is_some() => {
+                return self.start_file_search();
+            }
             (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.request_quit();
                 return Ok(());
