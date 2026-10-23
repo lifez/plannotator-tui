@@ -248,3 +248,16 @@ fn a_long_path_keeps_its_file_name_visible() {
     // Wide characters count two columns.
     assert_eq!(super::tail("文档/计划.md", 8), "…计划.md");
 }
+
+#[test]
+fn the_footer_names_quick_open_last_with_its_bound_key() {
+    let (root, mut app) = fixture();
+    let footer = screen(&mut app, 200, 20).lines().last().expect("footer").trim_end().to_owned();
+    assert!(footer.ends_with("q quit · ctrl+p find"), "{footer:?}");
+    app.keys = toml::from_str("quick-open = [\"ctrl+o\"]\n").expect("keys");
+    let footer = screen(&mut app, 200, 20).lines().last().expect("footer").trim_end().to_owned();
+    assert!(footer.ends_with("q quit · ctrl+o find"), "{footer:?}");
+    app.handle_event(&Event::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL))).expect("ctrl+o");
+    assert_eq!(app.mode, Mode::FileSearch);
+    std::fs::remove_dir_all(root).expect("cleanup");
+}

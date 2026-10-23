@@ -480,11 +480,11 @@ impl App {
             .chain(quit)
             .collect(),
         };
-        let mut help: Vec<String> = help.into_iter().flatten().collect();
-        // Quick Open works from any pane of a folder review, so every pane's help names it.
-        if self.tree.is_some() && self.pending.is_none() {
-            help.insert(0, "ctrl+p find".to_owned());
-        }
+        // Quick Open works from any pane of a folder review, so every pane's help names it,
+        // last.
+        let find =
+            if self.tree.is_some() && self.pending.is_none() { key(Action::QuickOpen, "find") } else { None };
+        let help: Vec<String> = help.into_iter().chain([find]).flatten().collect();
         let help = if help.is_empty() { String::new() } else { format!("{} ", help.join(" · ")) };
         // The status must stay readable at any width, so the key help yields columns to it
         // (and is clipped) rather than the other way round.

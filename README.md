@@ -211,6 +211,7 @@ screen show your keys. `plannotator-tui config` prints every action with its key
 | `cycle-focus` | `Tab` | tree · document · notes |
 | `send` `send-and-close` | `E` `S` | send; send and close a reply review |
 | `toggle-tree` `reload` `pick-message` | `t` `r` `p` | show/hide the tree; reload; choose another reply |
+| `quick-open` | `ctrl+p` | find a file by name in a folder review |
 | `review-menu` | `m` | the Review menu |
 | `resend-all` `finish-review` `undo-finish` `archive` | `R` `F` `U` `H` | file and folder review actions |
 | `toggle-hidden` | `.` | show/hide dot-prefixed entries in the tree |

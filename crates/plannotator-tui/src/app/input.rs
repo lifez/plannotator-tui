@@ -2,9 +2,7 @@
 
 use anyhow::Result;
 use plannotator_tui_schema::Kind;
-use ratatui::crossterm::event::{
-    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
-};
+use ratatui::crossterm::event::{Event, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind};
 
 use super::compose::ComposeAction;
 use super::menu::ReviewAction;
@@ -60,11 +58,18 @@ impl App {
 
     fn browse_key(&mut self, key: KeyEvent) -> Result<()> {
         // Global keys first.
-        // Quick Open exists only in a folder review; elsewhere ctrl+p falls through to `p`.
-        if key.code == KeyCode::Char('p') && key.modifiers == KeyModifiers::CONTROL && self.tree.is_some() {
-            return self.start_file_search();
-        }
-        match self.keys.action(&key, keys::GLOBAL) {
+        let action = match self.keys.action(&key, keys::GLOBAL) {
+            // Quick Open needs the file tree. Without one its key means what it did before
+            // `quick-open` existed: ctrl+p is `p`, which picks another reply.
+            Some(Action::QuickOpen) if self.tree.is_none() => {
+                let others: Vec<Action> =
+                    keys::GLOBAL.iter().copied().filter(|&action| action != Action::QuickOpen).collect();
+                self.keys.action(&key, &others)
+            }
+            action => action,
+        };
+        match action {
+            Some(Action::QuickOpen) => return self.start_file_search(),
             Some(Action::Quit | Action::Interrupt) => {
                 self.request_quit();
                 return Ok(());

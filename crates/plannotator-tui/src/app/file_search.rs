@@ -7,7 +7,7 @@ use anyhow::Result;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Paragraph};
 use unicode_width::{UnicodeWidthChar as _, UnicodeWidthStr as _};
@@ -232,7 +232,7 @@ impl App {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::new().fg(Color::Cyan))
+            .border_style(Style::new().fg(palette().accent))
             .title(Span::styled(" open a Markdown file ", Style::new().dim()))
             .title_bottom(Span::styled(" ↑↓ select · enter/click open · esc cancel ", Style::new().dim()));
         let inner = block.inner(rect);
@@ -281,7 +281,7 @@ impl App {
         let status = match &search.error {
             Some(error) => Line::from(vec![
                 Span::styled(status, Style::new().dim()),
-                Span::styled(format!(" · {error}"), Style::new().fg(Color::Yellow)),
+                Span::styled(format!(" · {error}"), Style::new().fg(palette().comment)),
             ]),
             None => Line::from(Span::styled(status, Style::new().dim())),
         };
